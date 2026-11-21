@@ -1,0 +1,43 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Local databases and WAL files
+data/*.db
+data/*.db-wal
+data/*.db-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Environment variables and secrets
+.env
+.env.local
+
+# Testing and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+
+# Generated visuals and temporary outputs
+data/visuals/tmp/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
