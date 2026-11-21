@@ -7,10 +7,15 @@ Total: 12 tests.
 All tests reflect Divyansh Prajapati's (@divyprjai) personal X (primary) and LinkedIn (secondary) voice.
 """
 
-from src.discovery.dedup import DeduplicationEngine
+from PIL import Image
 from src.discovery.parsers.github_parser import parse_github_atom
 from src.discovery.parsers.hf_parser import parse_hf_daily_papers
 from src.discovery.parsers.rss_parser import parse_rss_feed
+from src.web.app import EmergencyController
+
+from src.contracts.enums import Platform, PostStatus, SourceType
+from src.contracts.schemas import GeneratedContent, PublishJob
+from src.discovery.dedup import DeduplicationEngine
 from src.discovery.sanitizer import InputSanitizer
 from src.discovery.verifier import FactVerifier
 from src.generator.editorial_rules import (
@@ -21,10 +26,6 @@ from src.generator.editorial_rules import (
 from src.generator.visuals import VisualGenerator
 from src.publishing.queue_manager import QueueManager
 from src.publishing.safety_filter import SafetyFilter
-from src.web.app import EmergencyController
-
-from src.contracts.enums import Platform, PostStatus, SourceType
-from src.contracts.schemas import GeneratedContent, PublishJob
 from tests.fixtures.mock_data import (
     INJECTION_PAYLOADS,
     PERSONAL_PROFILE,
@@ -49,6 +50,10 @@ def test_t3_c01_arxiv_verified_xthread_pillow_mode_a_published(db_repo, make_dis
     vg = VisualGenerator(output_dir=str(temp_workdir))
     card_path = vg.create_metric_card(item.title, "85.0%", "Accuracy", item.source_url)
     assert card_path.endswith(".png")
+    with Image.open(card_path) as img:
+        assert img.size == (1200, 675), f"Visual card dimensions must be 1200x675, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
 
     qm = QueueManager(db_repo)
     job = PublishJob(
@@ -78,6 +83,10 @@ def test_t3_c02_github_release_verified_xpost_matplotlib_mode_b_intent(db_repo, 
     vg = VisualGenerator(output_dir=str(temp_workdir))
     chart_path = vg.create_benchmark_chart("Throughput Comparison", {"vLLM v0.6.4": 35.0, "v0.6.3": 22.0})
     assert chart_path.endswith(".png")
+    with Image.open(chart_path) as img:
+        assert img.size == (1200, 675), f"Benchmark chart dimensions must be 1200x675, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
 
     qm = QueueManager(db_repo)
     post_text = f"vLLM v0.6.4 kernel speedups: 35% improvement. Verified: {item.source_url} #{PERSONAL_PROFILE['handle']}"
@@ -176,6 +185,10 @@ def test_t3_c08_hf_paper_linkedin_pillow_metadata_clipboard_copy(temp_workdir):
 
     vg = VisualGenerator(output_dir=str(temp_workdir))
     card_path = vg.create_metric_card(item.title, "1-Bit", "BitNet Architecture", item.source_url)
+    with Image.open(card_path) as img:
+        assert img.size == (1200, 675), f"Visual card dimensions must be 1200x675, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
     meta = vg.read_png_metadata(card_path)
     assert meta["Source"] == item.source_url
     assert meta["Author"] == PERSONAL_PROFILE["name"]

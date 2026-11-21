@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Divyansh Prajapati — AI Intelligence Control Center</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body class="dark-theme">
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-branding">
+      <div class="brand-avatar">DP</div>
+      <div class="brand-info">
+        <h1 class="brand-title">Divyansh Prajapati</h1>
+        <div class="brand-subtitle">
+          <span class="brand-handle">@divyprjai</span>
+          <span class="brand-divider">•</span>
+          <span class="brand-tagline">AI Media &amp; Social Intelligence OS</span>
+          <span class="badge badge-zero-cost">₹0 Budget</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Badges & Mode Switcher -->
+    <div class="header-controls">
+      <div class="status-indicator-group">
+        <div id="ws-status-badge" class="badge badge-ws disconnected">
+          <span class="pulse-dot"></span>
+          <span id="ws-status-text">WS Disconnected</span>
+        </div>
+        <div id="system-status-badge" class="badge badge-system online">
+          <span class="pulse-dot"></span>
+          <span id="system-status-text">SYSTEM ONLINE</span>
+        </div>
+        <div id="mode-badge" class="badge badge-mode">AUTONOMOUS</div>
+      </div>
+
+      <div class="quick-actions">
+        <button id="btn-pause-toggle" class="btn btn-secondary btn-sm" title="Pause or Resume Background Loops">
+          <span class="btn-icon">⏸</span> <span id="btn-pause-text">Pause</span>
+        </button>
+        <button id="btn-emergency-stop" class="btn btn-danger btn-sm" title="Instant Emergency Automation Halt">
+          <span class="btn-icon">🛑</span> Emergency Stop
+        </button>
+        <button id="btn-emergency-resume" class="btn btn-success btn-sm hidden" title="Clear Emergency Halt">
+          <span class="btn-icon">▶</span> Resume Operations
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Navigation Tabs -->
+  <nav class="view-tabs" role="tablist">
+    <button class="tab-button active" data-view="health" role="tab" aria-selected="true">
+      <span class="tab-icon">📊</span> System Health &amp; Control
+    </button>
+    <button class="tab-button" data-view="discovery" role="tab" aria-selected="false">
+      <span class="tab-icon">🌐</span> News Discovery Stream
+      <span id="nav-discovery-badge" class="badge-count">0</span>
+    </button>
+    <button class="tab-button" data-view="queue" role="tab" aria-selected="false">
+      <span class="tab-icon">✍</span> Publishing Queue Editor
+      <span id="nav-queue-badge" class="badge-count">0</span>
+    </button>
+    <button class="tab-button" data-view="history" role="tab" aria-selected="false">
+      <span class="tab-icon">📜</span> Publication History
+      <span id="nav-history-badge" class="badge-count">0</span>
+    </button>
+    <button class="tab-button" data-view="register" role="tab" aria-selected="false">
+      <span class="tab-icon">💎</span> Cost &amp; Dependency Register
+    </button>
+    <button class="tab-button" data-view="logs" role="tab" aria-selected="false">
+      <span class="tab-icon">📟</span> System Logs &amp; Audit Trail
+    </button>
+  </nav>
+
+  <!-- Main Content Container with 6 Views -->
+  <main class="main-container">
+
+    <!-- VIEW 1: System Health & Automation Control -->
+    <section id="view-health" class="tab-view active">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">System Health &amp; Automation Telemetry</h2>
+          <p class="view-description">Real-time status of local discovery engines, SQLite WAL queues, and safety controllers.</p>
+        </div>
+        <div class="view-actions">
+          <button id="btn-refresh-health" class="btn btn-secondary btn-sm">↻ Refresh Metrics</button>
+        </div>
+      </div>
+
+      <!-- Emergency Circuit Breaker Banner (Active when halted) -->
+      <div id="emergency-banner" class="emergency-banner hidden">
+        <div class="emergency-icon">⚠️</div>
+        <div class="emergency-text">
+          <strong>EMERGENCY CIRCUIT BREAKER ACTIVATED</strong>
+          <p>All automated background discovery polling and publishing loops are hard-halted. External HTTP requests are blocked.</p>
+        </div>
+        <button id="btn-banner-resume" class="btn btn-light btn-sm">Clear Halt &amp; Resume</button>
+      </div>
+
+      <!-- System Stat Cards Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Automation Loop</div>
+          <div class="stat-value" id="stat-automation-state">ACTIVE</div>
+          <div class="stat-sub" id="stat-workers-sub">1 Ingestion Worker Active</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">System Uptime</div>
+          <div class="stat-value" id="stat-uptime">0s</div>
+          <div class="stat-sub">Localhost:8000 Server</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending Review</div>
+          <div class="stat-value" id="stat-awaiting-count">0</div>
+          <div class="stat-sub">Awaiting manual approval</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ready for Release</div>
+          <div class="stat-value" id="stat-ready-count">0</div>
+          <div class="stat-sub">Mode B 1-click clipboard queue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Published Posts</div>
+          <div class="stat-value" id="stat-published-count">0</div>
+          <div class="stat-sub">X &amp; LinkedIn releases</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Software Cost</div>
+          <div class="stat-value text-emerald">₹0.00</div>
+          <div class="stat-sub">Zero credit cards, 0 subscriptions</div>
+        </div>
+      </div>
+
+      <!-- Telemetry Breakdown & Controls -->
+      <div class="panel-grid-2">
+        <div class="card panel">
+          <h3 class="panel-title">Queue Status Breakdown</h3>
+          <div class="queue-meters">
+            <div class="meter-item">
+              <span class="meter-label">Queued</span>
+              <span id="meter-val-queued" class="meter-val">0</span>
+              <div class="meter-bar"><div id="meter-fill-queued" class="meter-fill bg-blue"></div></div>
+            </div>
+            <div class="meter-item">
+              <span class="meter-label">Awaiting Approval</span>
+              <span id="meter-val-awaiting" class="meter-val">0</span>
+              <div class="meter-bar"><div id="meter-fill-awaiting" class="meter-fill bg-amber"></div></div>
+            </div>
+            <div class="meter-item">
+              <span class="meter-label">Ready for Manual</span>
+              <span id="meter-val-ready" class="meter-val">0</span>
+              <div class="meter-bar"><div id="meter-fill-ready" class="meter-fill bg-emerald"></div></div>
+            </div>
+            <div class="meter-item">
+              <span class="meter-label">Published</span>
+              <span id="meter-val-published" class="meter-val">0</span>
+              <div class="meter-bar"><div id="meter-fill-published" class="meter-fill bg-purple"></div></div>
+            </div>
+            <div class="meter-item">
+              <span class="meter-label">Rejected</span>
+              <span id="meter-val-rejected" class="meter-val">0</span>
+              <div class="meter-bar"><div id="meter-fill-rejected" class="meter-fill bg-red"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card panel">
+          <h3 class="panel-title">Automation Safety &amp; Operating Mode</h3>
+          <div class="control-row">
+            <div>
+              <strong>Operating Mode</strong>
+              <div class="text-sub">Toggle autonomous scheduling vs manual approval gate</div>
+            </div>
+            <div class="btn-group">
+              <button id="btn-mode-auto" class="btn btn-sm btn-primary">Autonomous</button>
+              <button id="btn-mode-manual" class="btn btn-sm btn-secondary">Manual Gate</button>
+            </div>
+          </div>
+          <div class="control-row mt-3">
+            <div>
+              <strong>Trigger Manual Discovery</strong>
+              <div class="text-sub">Execute immediate feed poll without waiting for interval</div>
+            </div>
+            <button id="btn-trigger-discovery" class="btn btn-sm btn-secondary">Poll Feeds Now</button>
+          </div>
+          <div class="control-row mt-3">
+            <div>
+              <strong>Emergency Software Stop</strong>
+              <div class="text-sub">Instantly aborts all active and pending operations</div>
+            </div>
+            <button id="btn-trigger-emergency-panel" class="btn btn-sm btn-danger">Halt System</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: News Discovery Stream -->
+    <section id="view-discovery" class="tab-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">AI News Discovery Stream</h2>
+          <p class="view-description">Continuously monitored arXiv papers, GitHub releases, Hugging Face models, and AI lab blogs.</p>
+        </div>
+        <div class="view-actions">
+          <button id="btn-poll-discovery-view" class="btn btn-primary btn-sm">⚡ Ingest Feeds</button>
+          <button id="btn-refresh-discovery" class="btn btn-secondary btn-sm">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Filters Bar -->
+      <div class="filter-bar card">
+        <div class="filter-group">
+          <label for="filter-source">Source Type:</label>
+          <select id="filter-source" class="form-select">
+            <option value="">All Sources</option>
+            <option value="arxiv">arXiv Papers</option>
+            <option value="github">GitHub Releases</option>
+            <option value="huggingface">Hugging Face</option>
+            <option value="blog">AI Lab Blogs</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-verified">Verification:</label>
+          <select id="filter-verified" class="form-select">
+            <option value="">All Items</option>
+            <option value="true">Verified Only</option>
+            <option value="false">Unverified</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-min-score">Min Score (0-100):</label>
+          <input type="range" id="filter-min-score" min="0" max="100" value="0" class="form-range">
+          <span id="filter-score-val" class="filter-range-val">0</span>
+        </div>
+      </div>
+
+      <!-- Stream Items List -->
+      <div id="discovery-items-container" class="cards-grid mt-4">
+        <div class="empty-state">
+          <p>No discovered items matching filters. Click "Ingest Feeds" to poll configured sources.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: Interactive Publishing Queue Editor -->
+    <section id="view-queue" class="tab-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Interactive Publishing Queue &amp; Editor</h2>
+          <p class="view-description">Review, edit, verify, approve, and 1-click dispatch social posts for X and LinkedIn.</p>
+        </div>
+        <div class="view-actions">
+          <button id="btn-refresh-queue" class="btn btn-secondary btn-sm">↻ Refresh Queue</button>
+        </div>
+      </div>
+
+      <!-- Queue Sub-Tabs -->
+      <div class="sub-tabs">
+        <button class="sub-tab active" data-queue-status="">All Statuses</button>
+        <button class="sub-tab" data-queue-status="awaiting_approval">Awaiting Approval</button>
+        <button class="sub-tab" data-queue-status="ready_for_manual">Ready for Manual</button>
+        <button class="sub-tab" data-queue-status="queued">Queued</button>
+        <button class="sub-tab" data-queue-status="published">Published</button>
+        <button class="sub-tab" data-queue-status="rejected">Rejected</button>
+      </div>
+
+      <!-- Queue Cards Container -->
+      <div id="queue-items-container" class="queue-list mt-3">
+        <div class="empty-state">
+          <p>Publishing queue is currently empty.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: Publication History & Analytics -->
+    <section id="view-history" class="tab-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Publication History &amp; Release Log</h2>
+          <p class="view-description">Immutable record of all published content across X and LinkedIn.</p>
+        </div>
+        <div class="view-actions">
+          <button id="btn-refresh-history" class="btn btn-secondary btn-sm">↻ Refresh History</button>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card-sm">
+          <div class="stat-label">Total Published</div>
+          <div id="hist-total-count" class="stat-value-sm">0</div>
+        </div>
+        <div class="stat-card-sm">
+          <div class="stat-label">X Releases</div>
+          <div id="hist-x-count" class="stat-value-sm">0</div>
+        </div>
+        <div class="stat-card-sm">
+          <div class="stat-label">LinkedIn Releases</div>
+          <div id="hist-linkedin-count" class="stat-value-sm">0</div>
+        </div>
+      </div>
+
+      <div id="history-items-container" class="cards-grid mt-4">
+        <div class="empty-state">
+          <p>No published posts recorded yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: Cost & Dependency Register -->
+    <section id="view-register" class="tab-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">Zero-Cost Dependency &amp; Pricing Register</h2>
+          <p class="view-description">Complete transparent accounting confirming ₹0.00 total expenditure and zero paid subscriptions.</p>
+        </div>
+        <div class="view-actions">
+          <span class="badge badge-emerald">Audited: ₹0.00 Total Cost</span>
+        </div>
+      </div>
+
+      <div class="register-summary-card card">
+        <div class="summary-item">
+          <span class="summary-label">Direct Software Cost:</span>
+          <span class="summary-val text-emerald">₹0.00</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Credit Card Attached:</span>
+          <span class="summary-val text-emerald">None (0 Risk)</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Max Financial Exposure:</span>
+          <span class="summary-val text-emerald">₹0.00</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Inference Runtime:</span>
+          <span class="summary-val text-sky">Local Ollama (r1:latest)</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Database Storage:</span>
+          <span class="summary-val text-sky">SQLite WAL Mode (Local)</span>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="table-header-filter">
+          <input type="text" id="filter-dep-input" class="form-input" placeholder="Filter dependencies by name, license, or category...">
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Category</th>
+                <th>License</th>
+                <th>Auth Required</th>
+                <th>Cost</th>
+                <th>Purpose &amp; Status</th>
+              </tr>
+            </thead>
+            <tbody id="dependencies-table-body">
+              <tr><td colspan="6" class="text-center">Loading dependency register...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: System Logs & Audit Trail -->
+    <section id="view-logs" class="tab-view">
+      <div class="view-header">
+        <div>
+          <h2 class="view-title">System Execution Logs &amp; Audit Trail</h2>
+          <p class="view-description">Real-time immutable audit log terminal streaming events, scheduler cycles, and safety alerts.</p>
+        </div>
+        <div class="view-actions">
+          <button id="btn-clear-logs" class="btn btn-secondary btn-sm">Clear Terminal</button>
+          <button id="btn-refresh-logs" class="btn btn-secondary btn-sm">↻ Fetch Recent</button>
+        </div>
+      </div>
+
+      <div class="log-controls card">
+        <div class="filter-group">
+          <label for="filter-log-event">Event Type:</label>
+          <select id="filter-log-event" class="form-select">
+            <option value="">All Events</option>
+            <option value="DISCOVERY_POLL">Discovery Poll</option>
+            <option value="INGEST">Ingest</option>
+            <option value="APPROVE">Approve</option>
+            <option value="REJECT">Reject</option>
+            <option value="EMERGENCY_HALT">Emergency Halt</option>
+            <option value="PUBLISH">Publish</option>
+          </select>
+        </div>
+        <div class="toggle-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chk-autoscroll" checked> Auto-scroll to latest
+          </label>
+        </div>
+      </div>
+
+      <div class="terminal-container mt-3">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <div class="terminal-title">audit_logs.stream — bash &amp; websocket telemetry</div>
+          <div id="log-count-indicator" class="terminal-meta">0 entries</div>
+        </div>
+        <div id="terminal-body" class="terminal-body">
+          <div class="terminal-line text-sub">System terminal initialized. Streaming live audit events...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Edit Post Modal -->
+  <div id="modal-edit-post" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Draft Post</h3>
+        <button id="btn-close-modal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit-post-text">Post Content (Strict Zero Em Dashes):</label>
+          <textarea id="edit-post-text" class="form-textarea" rows="6"></textarea>
+          <div class="char-count-bar">
+            <span id="modal-char-count">0</span> / <span id="modal-max-chars">280</span> chars
+            <span id="modal-em-dash-warning" class="text-amber hidden">⚠️ Em dash detected! Auto-sanitizer will replace it.</span>
+          </div>
+        </div>
+        <input type="hidden" id="edit-post-id">
+      </div>
+      <div class="modal-footer">
+        <button id="btn-modal-clean-dashes" class="btn btn-secondary btn-sm">Fix Em Dashes</button>
+        <button id="btn-modal-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+        <button id="btn-modal-save" class="btn btn-primary btn-sm">Save &amp; Lint</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

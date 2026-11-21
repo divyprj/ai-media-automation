@@ -1,10 +1,7 @@
 """Unit tests for SQLite database connection, models, and repository."""
 
-import os
 import sqlite3
-import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 
 import pytest
 
@@ -89,10 +86,9 @@ class TestDatabaseConnection:
             assert row["val"] == 100
 
         # Verify rollback on exception
-        with pytest.raises(RuntimeError):
-            with get_db_connection(db_file) as conn:
-                conn.execute("INSERT INTO txn_test VALUES (200);")
-                raise RuntimeError("Forced failure")
+        with pytest.raises(RuntimeError), get_db_connection(db_file) as conn:
+            conn.execute("INSERT INTO txn_test VALUES (200);")
+            raise RuntimeError("Forced failure")
 
         with get_db_connection(db_file) as conn:
             rows = conn.execute("SELECT val FROM txn_test;").fetchall()

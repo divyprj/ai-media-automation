@@ -11,17 +11,18 @@ Total: 5 tests.
 All tests reflect Divyansh Prajapati's (@divyprjai) personal X (primary) and LinkedIn (secondary) voice.
 """
 
+from PIL import Image
 from src.discovery.parsers.arxiv_parser import parse_arxiv_feed
+from src.web.app import EmergencyController
+
+from src.contracts.enums import Platform, PostStatus
+from src.contracts.schemas import GeneratedContent, PublishJob
 from src.discovery.sanitizer import InputSanitizer
 from src.discovery.verifier import FactVerifier
 from src.generator.editorial_rules import EditorialLinter, TwitterTextCalculator
 from src.generator.visuals import VisualGenerator
 from src.publishing.queue_manager import QueueManager
 from src.publishing.safety_filter import SafetyFilter
-from src.web.app import EmergencyController
-
-from src.contracts.enums import Platform, PostStatus
-from src.contracts.schemas import GeneratedContent, PublishJob
 from tests.fixtures.mock_data import (
     INJECTION_PAYLOADS,
     PERSONAL_PROFILE,
@@ -62,6 +63,10 @@ def test_t4_s1_autonomous_ingestion_to_manual_queue_flow(db_repo, sync_client, t
     vg = VisualGenerator(output_dir=str(temp_workdir))
     card_path = vg.create_metric_card(item.title, "3.2x", "Throughput Gain", item.source_url)
     assert card_path.endswith(".png")
+    with Image.open(card_path) as img:
+        assert img.size == (1200, 675), f"Visual card dimensions must be 1200x675, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
 
     qm = QueueManager(db_repo)
     intent_url = qm.generate_web_intent_url(post_text, item.source_url)

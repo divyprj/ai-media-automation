@@ -1,6 +1,7 @@
 """Unit tests for system enums and Pydantic contract schemas."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -72,7 +73,7 @@ class TestDiscoveredItemSchema:
         assert item.raw_metadata == {}
 
     def test_item_with_full_metadata(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         item = DiscoveredItem(
             id="item-002",
             source_type=SourceType.GITHUB,
@@ -202,7 +203,7 @@ class TestSystemStatusSchema:
         assert status.queue_counts == {}
 
     def test_custom_system_status(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         status = SystemStatus(
             is_paused=True,
             emergency_shutoff=True,

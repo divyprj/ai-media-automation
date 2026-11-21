@@ -17,12 +17,21 @@ Total: 55 tests.
 All tests reflect Divyansh Prajapati's (@divyprjai) personal X (primary) and LinkedIn (secondary) voice.
 """
 
-from src.discovery.dedup import DeduplicationEngine
+import os
+import re
+from pathlib import Path
+
+from PIL import Image
 from src.discovery.parsers.arxiv_parser import parse_arxiv_feed
 from src.discovery.parsers.github_parser import parse_github_atom
 from src.discovery.parsers.hf_parser import parse_hf_daily_papers
 from src.discovery.parsers.rss_parser import parse_rss_feed
 from src.discovery.parsers.sitemap_parser import parse_sitemap_xml
+from src.web.app import EmergencyController
+
+from src.contracts.enums import PostStatus, SourceType
+from src.contracts.schemas import DiscoveredItem
+from src.discovery.dedup import DeduplicationEngine
 from src.discovery.sanitizer import InputSanitizer
 from src.discovery.verifier import FactVerifier
 from src.generator.editorial_rules import (
@@ -33,10 +42,6 @@ from src.generator.editorial_rules import (
 from src.generator.visuals import VisualGenerator
 from src.publishing.queue_manager import QueueManager
 from src.publishing.safety_filter import SafetyFilter
-from src.web.app import EmergencyController
-
-from src.contracts.enums import PostStatus, SourceType
-from src.contracts.schemas import DiscoveredItem
 from tests.fixtures.mock_data import (
     PERSONAL_PROFILE,
     SAMPLE_ARXIV_ATOM_XML,
@@ -328,6 +333,10 @@ def test_t1_f7_01_matplotlib_16_9_dark_benchmark_chart(temp_workdir):
     generator = VisualGenerator(output_dir=str(temp_workdir))
     path = generator.create_benchmark_chart("AIME 2024", {"DeepSeek-R1": 79.8, "o1-mini": 78.5})
     assert path.endswith(".png")
+    assert os.path.exists(path), f"Benchmark chart image file not found at {path}"
+    assert os.path.getsize(path) > 0, f"Benchmark chart image file is empty at {path}"
+    with Image.open(path) as img:
+        assert img.size == (1200, 675), f"Expected (1200, 675) image dimensions, got {img.size}"
 
 
 def test_t1_f7_02_pillow_dark_social_metric_card(temp_workdir):
@@ -335,34 +344,49 @@ def test_t1_f7_02_pillow_dark_social_metric_card(temp_workdir):
     generator = VisualGenerator(output_dir=str(temp_workdir))
     path = generator.create_metric_card("DeepSeek-R1", "79.8%", "AIME 2024", "arxiv:2410.12345")
     assert path.endswith(".png")
+    assert os.path.exists(path), f"Social metric card image file not found at {path}"
+    assert os.path.getsize(path) > 0, f"Social metric card image file is empty at {path}"
+    with Image.open(path) as img:
+        assert img.size == (1200, 675), f"Expected (1200, 675) image dimensions, got {img.size}"
 
 
 def test_t1_f7_03_visual_canvas_attribution_watermark(temp_workdir):
-    """Verify rendered image embeds visible source attribution and personal attribution."""
+    """Verify rendered image embeds visible source attribution and personal attribution with 1200x675 dimensions."""
     generator = VisualGenerator(output_dir=str(temp_workdir))
-    meta = generator.inspect_visual_footer(
-        generator.create_metric_card("Title", "99%", "Test", "https://arxiv.org/abs/123", "MIT")
-    )
+    card_path = generator.create_metric_card("Title", "99%", "Test", "https://arxiv.org/abs/123", "MIT")
+    meta = generator.inspect_visual_footer(card_path)
     assert "arxiv.org" in meta["footer_text"]
+    with Image.open(card_path) as img:
+        assert img.size == (1200, 675), f"Expected (1200, 675) image dimensions, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
 
 
 def test_t1_f7_04_digital_png_text_metadata_chunks(temp_workdir):
-    """Verify Pillow writes digital tEXt chunks (Source, License, Author) into PNG header."""
+    """Verify Pillow writes digital tEXt chunks (Source, License, Author) into PNG header with 1200x675 dimensions."""
     generator = VisualGenerator(output_dir=str(temp_workdir))
     path = generator.create_metric_card("Title", "99%", "Test", "https://arxiv.org/abs/123", "Apache-2.0")
     chunks = generator.read_png_metadata(path)
     assert chunks.get("Source") == "https://arxiv.org/abs/123"
     assert chunks.get("License") == "Apache-2.0"
     assert chunks.get("Author") == PERSONAL_PROFILE["name"]
+    with Image.open(path) as img:
+        assert img.size == (1200, 675), f"Expected (1200, 675) image dimensions, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
 
 
 def test_t1_f7_05_visual_file_non_zero_and_png_header(temp_workdir):
-    """Verify generated visual file has non-zero size and valid PNG magic bytes."""
+    """Verify generated visual file has non-zero size, valid PNG magic bytes, and 1200x675 dimensions."""
     generator = VisualGenerator(output_dir=str(temp_workdir))
     path = generator.create_metric_card("Title", "99%", "Test", "https://arxiv.org/abs/123")
     with open(path, "rb") as f:
         header = f.read(8)
     assert header == b"\x89PNG\r\n\x1a\n"
+    with Image.open(path) as img:
+        assert img.size == (1200, 675), f"Expected (1200, 675) image dimensions, got {img.size}"
+        assert img.width == 1200
+        assert img.height == 675
 
 
 # ==============================================================================
@@ -541,8 +565,59 @@ def test_t1_f11_04_put_queue_inline_edit_and_relint(sync_client, db_repo, make_p
 
 
 def test_t1_f11_05_get_dependencies_zero_cost_verification(sync_client):
-    """Verify GET /api/dependencies returns all ₹0 verified libraries and tools."""
+    """Verify GET /api/dependencies reads and parses the real DEPENDENCY_REGISTER.md file."""
+    # 1. Directly read and parse the real DEPENDENCY_REGISTER.md file
+    register_path = Path(__file__).resolve().parent.parent.parent / "DEPENDENCY_REGISTER.md"
+    if not register_path.exists():
+        register_path = Path("/home/divyansh-prajapati/Downloads/X/DEPENDENCY_REGISTER.md")
+
+    assert register_path.exists(), "DEPENDENCY_REGISTER.md must exist in repository root"
+    content = register_path.read_text(encoding="utf-8")
+    assert len(content) > 0, "DEPENDENCY_REGISTER.md must not be empty"
+
+    # Verify Financial Audit Summary in the register
+    assert "- **Total Direct Software Cost**: **₹0.00**" in content
+    assert "- **Total Cloud / SaaS API Subscription Cost**: **₹0.00**" in content
+    assert "- **Total Infrastructure / Hosting Cost**: **₹0.00**" in content
+    assert "- **Payment Credentials Registered**: **0 (None)**" in content
+    assert "- **Maximum Financial Exposure**: **₹0.00**" in content
+
+    # Extract all registered components from markdown tables
+    file_items = []
+    for line in content.splitlines():
+        line = line.strip()
+        if line.startswith("|") and "₹0.00" in line:
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 5:
+                name = re.sub(r"[\*`]", "", parts[0]).strip()
+                file_items.append({"name": name, "cost": "₹0.00"})
+
+    assert len(file_items) >= 20, f"Expected at least 20 registered zero-cost items, found {len(file_items)}"
+    assert all(item["cost"] == "₹0.00" for item in file_items)
+
+    # Strictly assert zero paid dependencies and absolute ₹0 budget
+    paid_file_items = [item for item in file_items if item["cost"] != "₹0.00"]
+    assert len(paid_file_items) == 0, f"Discovered paid dependencies in register: {paid_file_items}"
+
+    # 2. Verify GET /api/dependencies endpoint returns dependencies parsed from the register
     res = sync_client.get("/api/dependencies")
     assert res.status_code == 200
-    items = res.json()
-    assert all(item["cost"] == "₹0.00" for item in items)
+    api_items = res.json()
+    assert len(api_items) >= 20, f"API returned {len(api_items)} dependencies, expected >= 20"
+    assert all(item["cost"] == "₹0.00" for item in api_items)
+
+    # Assert zero paid dependencies in API items
+    paid_api_items = [item for item in api_items if item.get("cost") != "₹0.00"]
+    assert len(paid_api_items) == 0, f"API returned paid dependencies: {paid_api_items}"
+
+    # Calculate numeric total cost to strictly verify ₹0 budget
+    total_cost_numeric = sum(
+        float(re.sub(r"[^\d\.]", "", str(item.get("cost", "0"))) or 0.0)
+        for item in api_items
+    )
+    assert total_cost_numeric == 0.0, f"Total expenditure must be strictly ₹0.00, got: {total_cost_numeric}"
+
+    # Verify key dependencies are present in both file and API response
+    api_names = {item["name"] for item in api_items}
+    for expected_key in ["FastAPI", "SQLite 3", "Ollama Local Engine", "Matplotlib", "Pillow"]:
+        assert any(expected_key.lower() in name.lower() for name in api_names), f"Missing {expected_key} in API response"

@@ -13,17 +13,18 @@ Total: 35 tests.
 import sqlite3
 import threading
 
+import httpx
 import pytest
 from src.discovery.parsers.rss_parser import parse_rss_feed
+
+from src.contracts.enums import PostStatus
+from src.database.connection import get_db_connection
 from src.generator.editorial_rules import (
     EditorialLinter,
     LinkedInFormatter,
     TwitterTextCalculator,
 )
 from src.publishing.queue_manager import QueueManager
-
-from src.contracts.enums import PostStatus
-from src.database.connection import get_db_connection
 
 # ==============================================================================
 # Class 1: Extreme Character Counts & Off-by-One Boundaries (7 tests)
@@ -101,15 +102,33 @@ def test_t2_b2_02_massive_10mb_feed_partial_read_bounds():
 
 
 def test_t2_b2_03_http_404_feed_not_found_handled(mock_http_client):
-    """Verify HTTP client handles 404 or simulated feed response gracefully."""
+    """Verify HTTP client handles 404 or simulated feed response gracefully with strict status and exception checks."""
     res = mock_http_client.get("https://example.com/notfound-feed.xml")
-    assert res.status_code in [200, 404]
+    assert res.status_code == 404
+    assert res.text == "Not Found"
+    assert res.is_error is True
+    assert res.is_client_error is True
+    assert res.is_server_error is False
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        res.raise_for_status()
+    assert exc_info.value.response.status_code == 404
+    assert "404" in str(exc_info.value)
+    assert exc_info.value.response.text == "Not Found"
 
 
 def test_t2_b2_04_http_500_server_error_handled(mock_http_client):
-    """Verify HTTP client handles upstream server error gracefully."""
+    """Verify HTTP client handles upstream server error gracefully with strict status and exception checks."""
     res = mock_http_client.get("https://example.com/server-error.xml")
-    assert res.status_code in [200, 500]
+    assert res.status_code == 500
+    assert res.text == "Internal Server Error"
+    assert res.is_error is True
+    assert res.is_server_error is True
+    assert res.is_client_error is False
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        res.raise_for_status()
+    assert exc_info.value.response.status_code == 500
+    assert "500" in str(exc_info.value)
+    assert exc_info.value.response.text == "Internal Server Error"
 
 
 def test_t2_b2_05_http_429_rate_limit_reset_header_backoff():
@@ -181,9 +200,14 @@ def test_t2_b3_06_unprintable_ascii_control_characters():
 def test_t2_b3_07_unbreakable_500_char_token_wrapping():
     """Verify long unbreakable URL or token is wrapped or formatted safely."""
     formatter = LinkedInFormatter()
-    long_token = "https://example.com/" + "a" * 200
+    long_token = "https://example.com/" + "a" * 500
     wrapped = formatter.wrap_long_tokens(long_token, max_token_len=80)
-    assert len(wrapped) > 0
+    assert "\n" in wrapped
+    lines = wrapped.splitlines()
+    assert len(lines) > 1
+    assert all(len(line) <= 80 for line in lines)
+    # Verify no characters were lost during line-wrapping
+    assert wrapped.replace("\n", "").replace(" ", "") == long_token
 
 
 # ==============================================================================
