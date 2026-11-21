@@ -102,18 +102,34 @@ class Repository:
 
             return self._row_to_discovered_item(row)
 
-    def get_unprocessed_items(self, limit: int = 50) -> List[DiscoveredItem]:
+    def get_unprocessed_items(
+        self, limit: int = 50, platform: Optional[Platform] = None
+    ) -> List[DiscoveredItem]:
         """Retrieve discovered items that have not yet been queued for publishing."""
         with get_db_connection(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT * FROM discovered_items
-                WHERE id NOT IN (SELECT item_id FROM publish_queue)
-                ORDER BY discovered_at DESC
-                LIMIT ?;
-                """,
-                (limit,),
-            )
+            if platform is not None:
+                platform_val = (
+                    platform.value if hasattr(platform, "value") else str(platform)
+                )
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM discovered_items
+                    WHERE id NOT IN (SELECT item_id FROM publish_queue WHERE platform = ?)
+                    ORDER BY discovered_at DESC
+                    LIMIT ?;
+                    """,
+                    (platform_val, limit),
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM discovered_items
+                    WHERE id NOT IN (SELECT item_id FROM publish_queue)
+                    ORDER BY discovered_at DESC
+                    LIMIT ?;
+                    """,
+                    (limit,),
+                )
             rows = cursor.fetchall()
             return [self._row_to_discovered_item(r) for r in rows]
 
@@ -161,13 +177,14 @@ class Repository:
                 conn.execute(
                     """
                     INSERT INTO publish_queue (
-                        job_id, item_id, platform, status, scheduled_for,
+                        job_id, item_id, post_id, platform, status, scheduled_for,
                         created_at, updated_at, retry_count, error_message
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     (
                         job.job_id,
                         job.item_id,
+                        post_id,
                         job.platform.value,
                         job.status.value,
                         sched_iso,
@@ -212,7 +229,7 @@ class Repository:
                     p.attribution_url, p.is_sensitive
                 FROM publish_queue q
                 LEFT JOIN generated_posts p
-                    ON q.item_id = p.item_id AND q.platform = p.platform
+                    ON q.post_id = p.id
                 WHERE q.status IN ('queued', 'verified', 'awaiting_approval', 'ready_for_manual')
                 ORDER BY q.created_at ASC
                 LIMIT ?;

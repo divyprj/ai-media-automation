@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime configuration settings loaded from environment or .env file."""
 
+    owner_name: str = "Divyansh Prajapati"
+    owner_handle: str = "@divyprjai"
     database_url: str = "data/ai_media.db"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "r1:latest"

@@ -126,6 +126,7 @@ class TestDatabaseModels:
                 "idx_discovered_items_hash",
                 "idx_publish_queue_status_sched",
                 "idx_publish_queue_item",
+                "idx_publish_queue_post_id",
                 "idx_generated_posts_item",
                 "idx_audit_logs_timestamp",
             }
@@ -261,6 +262,45 @@ class TestRepository:
         assert len(unprocessed_after) == 1
         assert unprocessed_after[0].id == "unprocessed-2"
 
+    def test_get_unprocessed_items_platform_filter(self, repo):
+        item = DiscoveredItem(
+            id="item-multiplatform-1",
+            source_type=SourceType.ARXIV,
+            title="Multi-Platform Discovery",
+            summary="New breakthrough architecture.",
+            source_url="https://arxiv.org/abs/2402.12345",
+            content_hash="hash_multiplatform_123",
+        )
+        repo.save_discovered_item(item)
+
+        # Enqueue job for Platform.X
+        content_x = GeneratedContent(
+            platform=Platform.X,
+            text="Breakthrough architecture for X.",
+            character_count=32,
+            attribution_url="https://arxiv.org/abs/2402.12345",
+        )
+        job_x = PublishJob(
+            job_id="job-x-multi",
+            item_id="item-multiplatform-1",
+            platform=Platform.X,
+            content=content_x,
+            status=PostStatus.QUEUED,
+        )
+        repo.enqueue_publish_job(job_x)
+
+        # Query unprocessed for LinkedIn: must still return the item
+        unprocessed_linkedin = repo.get_unprocessed_items(platform=Platform.LINKEDIN)
+        assert any(it.id == "item-multiplatform-1" for it in unprocessed_linkedin)
+
+        # Query unprocessed for X: must exclude the item
+        unprocessed_x = repo.get_unprocessed_items(platform=Platform.X)
+        assert not any(it.id == "item-multiplatform-1" for it in unprocessed_x)
+
+        # Default query (no platform): excludes items queued for any platform
+        unprocessed_default = repo.get_unprocessed_items()
+        assert not any(it.id == "item-multiplatform-1" for it in unprocessed_default)
+
     def test_foreign_key_enforcement_on_enqueue(self, repo):
         content = GeneratedContent(
             platform=Platform.X,
@@ -313,6 +353,57 @@ class TestRepository:
         assert retrieved_job.platform == Platform.X
         assert retrieved_job.content.text == "Checkpoint now available on HF Hub."
         assert retrieved_job.status == PostStatus.QUEUED
+
+    def test_get_pending_jobs_with_multiple_drafts_no_cartesian_product(self, repo):
+        item = DiscoveredItem(
+            id="item-regen-test",
+            source_type=SourceType.BLOG,
+            title="Reasoning Paper Release",
+            summary="Discussion on new reasoning model.",
+            source_url="https://example.com/reasoning",
+            content_hash="hash_regen_123",
+        )
+        repo.save_discovered_item(item)
+
+        # Enqueue draft 1 for item on Platform.X, then reject it
+        c1 = GeneratedContent(
+            platform=Platform.X,
+            text="Draft 1 (bad draft with issues)",
+            character_count=30,
+            attribution_url="https://example.com/reasoning",
+        )
+        job1 = PublishJob(
+            job_id="job-regen-1",
+            item_id="item-regen-test",
+            platform=Platform.X,
+            content=c1,
+            status=PostStatus.QUEUED,
+        )
+        repo.enqueue_publish_job(job1)
+        repo.update_job_status("job-regen-1", PostStatus.REJECTED)
+
+        # Enqueue draft 2 for item on Platform.X (pending / QUEUED)
+        c2 = GeneratedContent(
+            platform=Platform.X,
+            text="Draft 2 (good polished draft)",
+            character_count=30,
+            attribution_url="https://example.com/reasoning",
+        )
+        job2 = PublishJob(
+            job_id="job-regen-2",
+            item_id="item-regen-test",
+            platform=Platform.X,
+            content=c2,
+            status=PostStatus.QUEUED,
+        )
+        repo.enqueue_publish_job(job2)
+
+        # Verify get_pending_jobs returns exactly 1 pending job with draft 2 content
+        pending_jobs = repo.get_pending_jobs()
+        assert len(pending_jobs) == 1
+        assert pending_jobs[0].job_id == "job-regen-2"
+        assert pending_jobs[0].content.text == "Draft 2 (good polished draft)"
+        assert pending_jobs[0].status == PostStatus.QUEUED
 
     def test_update_job_status(self, repo):
         item = DiscoveredItem(

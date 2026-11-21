@@ -229,3 +229,12 @@ class TestAuditLogEntrySchema:
         assert entry.event_type == "DISCOVERY_INGESTED"
         assert entry.details["items_count"] == 14
         assert isinstance(entry.timestamp, datetime)
+
+    def test_audit_log_entry_is_immutable(self):
+        entry = AuditLogEntry(
+            id="audit-immutable",
+            event_type="SYSTEM_EVENT",
+            details={},
+        )
+        with pytest.raises(ValidationError):
+            entry.event_type = "MUTATED"

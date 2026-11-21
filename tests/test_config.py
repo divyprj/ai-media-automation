@@ -11,6 +11,8 @@ class TestSettings:
 
     def test_default_settings(self):
         settings = Settings()
+        assert settings.owner_name == "Divyansh Prajapati"
+        assert settings.owner_handle == "@divyprjai"
         assert settings.database_url == "data/ai_media.db"
         assert settings.ollama_base_url == "http://localhost:11434"
         assert settings.ollama_model == "r1:latest"
@@ -19,6 +21,11 @@ class TestSettings:
         assert settings.log_level == "INFO"
         assert settings.enable_emergency_shutoff is False
         assert settings.x_api_key is None
+
+    def test_owner_personal_account_configuration(self):
+        settings = Settings()
+        assert settings.owner_name == "Divyansh Prajapati"
+        assert settings.owner_handle == "@divyprjai"
 
     def test_environment_variable_override(self):
         with patch.dict(

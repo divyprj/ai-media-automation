@@ -1,1 +1,1 @@
-"""Automated test suite for ai-media-automation."""
+"""Tests package root."""

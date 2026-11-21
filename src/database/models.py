@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS generated_posts (
 CREATE TABLE IF NOT EXISTS publish_queue (
     job_id TEXT PRIMARY KEY,
     item_id TEXT NOT NULL REFERENCES discovered_items(id) ON DELETE CASCADE,
+    post_id TEXT REFERENCES generated_posts(id) ON DELETE CASCADE,
     platform TEXT NOT NULL,
     status TEXT NOT NULL,
     scheduled_for TEXT,
@@ -69,6 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_discovered_items_hash ON discovered_items(content
 CREATE INDEX IF NOT EXISTS idx_discovered_items_discovered_at ON discovered_items(discovered_at DESC);
 CREATE INDEX IF NOT EXISTS idx_publish_queue_status_sched ON publish_queue(status, scheduled_for);
 CREATE INDEX IF NOT EXISTS idx_publish_queue_item ON publish_queue(item_id);
+CREATE INDEX IF NOT EXISTS idx_publish_queue_post_id ON publish_queue(post_id);
 CREATE INDEX IF NOT EXISTS idx_generated_posts_item ON generated_posts(item_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
 """

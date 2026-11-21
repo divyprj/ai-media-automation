@@ -121,4 +121,4 @@ class AuditLogEntry(BaseModel):
         default_factory=dict, description="Structured event payload"
     )
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, frozen=True)
